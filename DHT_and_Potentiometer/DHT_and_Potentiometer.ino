@@ -24,9 +24,13 @@ void setup() {
 
   dht.begin();  // Initialize the DHT sensor
 }
-int target_humidity = 40;
+
+
+int target_base = 40; // smallest value for target humidity
 int last_time = millis();
 int last_Pot_Val = 0;
+
+
 void loop() {
   int current_time = millis();
   int time_diff = current_time - last_time;
@@ -35,10 +39,14 @@ void loop() {
   if (time_diff >= 2000) {
   float actual_humidity = read_Humidity();
   }
+  //displays the current potentiometer value and doesn't update serial unless value has changed
   if (current_Pot_Val != last_Pot_Val) {
+    // updates last and current potentiometer values
     last_Pot_Val = current_Pot_Val;
     current_Pot_Val = read_Pot();
-    Serial.println(current_Pot_Val);
+
+    int target_humidity = current_Pot_Val + target_base; // user set target humidity
+    Serial.println(target_humidity);
   }
   
 
@@ -56,9 +64,9 @@ int read_Humidity() {
   return humidity;
 }
 
-//gets a value from 0 to 30 from the potentiometer
+//gets a value from 0 to 20 from the potentiometer
 int read_Pot() {
   int Pot_Val = analogRead(PotPIN);
-  int pot_final_val = (Pot_Val * 30) / 4095;
+  int pot_final_val = (Pot_Val * 20) / 4095;
   return pot_final_val;
 }
