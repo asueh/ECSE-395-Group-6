@@ -1,9 +1,13 @@
 /*
   This code is for Spring 2025 ECSE 395 Group 6's project. 
   It is meant to be a humidifier that works with an external water source for easy cleaning.
-  The current code is to run the fan (Motor B) for 5 seconds whenever the actual humidity is below the target humidity.
-  It then waits for 30 seconds before turning the fan on for another 5, repeating until the actual humidity is
-  at or above the target humidity.
+  The current code is the final iteration for this class.
+  If the water level is below a certain value, the peristaltic pump runs a specific number of steps to fill the water a bit.
+  Otherwise, the pump is off.
+  When the pump is turning, the humidity will not update until it's done (due to the code being only on the line for moving a certain number of steps).
+  When the pump is off, the actual humidity will update every 2 seconds, and the target humidity will update whenever it's changed via a potentiometer.
+  If the actual humidity is below the target humidity, the fan will run for 5 seconds, then be off for 30, and repeat that until the actual humidity
+  is equal to or above the target humidity.
   The board used for this project is an Seeed Studio XIAO ESP32S3 as it had enough analog out pins for the project
   While the board given in class, the Adafruit Feather V2, does not have enough.
 */
@@ -15,7 +19,7 @@
 //lcd is wired to SCL and SDA pins (4 and 5 on the XIAO ESP32S3)
 const int DHTPIN = A10;  // Define the pin used to connect the sensor
 #define DHTTYPE DHT11  // Define the sensor type
-const int PotPIN = A9; // Defines the potentiometer pin
+const int PotPIN = A3; // Defines the potentiometer pin
 
 const int motorB_1A = A1; //Define the pin for pin B-1A on motor controller board
 const int motorB_2A = A0; //Define the pin for pin B-2A on motor controller board
@@ -71,6 +75,7 @@ void setup() {
 
 
 int last_time_motor = millis();
+int last_time_pump = millis();
 int last_time_hum = millis();
 int last_Pot_Val = 0;
 int target_base = 40; //smallest value for target humidity
@@ -111,14 +116,13 @@ void loop() {
     lcd.print(target_humidity);
     lcd.print("%");
   }
-
+  int target = read_Pot() + target_base;
+  int actual = read_Humidity();
   // MOTOR/FAN CODE
-
   //gets time values for next if statement
   int current_time_motor = millis();
   int time_diff_motor = current_time_motor - last_time_motor;
-  if (actual_humidity > target_humidity) {
-    Serial.println(target_humidity);
+  if (actual > target) {
     if (time_diff_motor < 5000) {
       run_Fan();
     } else {
@@ -127,28 +131,28 @@ void loop() {
     if (time_diff_motor > 35000) {
       last_time_motor = millis();
     }
+  } else {
+    fan_Off();
   }
 
   // PUMP CODE
-
   int water_level = analogRead(waterLevelPIN); //reads water level
-  int current_time_pump = millis();
-  if (water_level <= 1300) { // if water level is below certain value, activates pump for 3 seconds
+  if (water_level <= 1000) { // if water level is below certain value, activates pump for 3 seconds
     stepper.setSpeedInStepsPerSecond(5400);
     stepper.setAccelerationInStepsPerSecondPerSecond(1800);
     stepper.moveRelativeInSteps(-10000);
-  } else { // otherwise, motor does not move
+  } else {
     stepper.setSpeedInStepsPerSecond(0);
     stepper.setAccelerationInStepsPerSecondPerSecond(0);
     stepper.moveRelativeInSteps(0);
-  }
+  } 
 }
 
 // reads and returns the humidity from the DHT sensor
 int read_Humidity() {
   int humidity = dht.readHumidity();
   if (isnan(humidity)) {
-    Serial.println(F("Failed to read from DHT sensor!"));
+    //Serial.println(F("Failed to read from DHT sensor!"));
     return humidity;
   }
   //Serial.print(F("Humidity: "));
